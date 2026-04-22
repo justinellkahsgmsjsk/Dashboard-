@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DashPro — Analytics Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root[data-theme="dark"]{
+  --bg:#0f0f1a; --surface:#16162a; --surface-2:#1c1c36; --border:#2a2a4a;
+  --text:#e6e6f0; --muted:#8a8aa3; --accent:#e94560; --accent-2:#4361ee;
+  --success:#10b981; --warn:#f59e0b; --danger:#ef4444;
+}
+:root[data-theme="light"]{
+  --bg:#f5f6fa; --surface:#ffffff; --surface-2:#f0f1f7; --border:#e3e5ee;
+  --text:#1a1a2e; --muted:#6b7280; --accent:#e94560; --accent-2:#4361ee;
+  --success:#059669; --warn:#d97706; --danger:#dc2626;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);transition:background .25s,color .25s}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--surface);padding:24px 16px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:6px;z-index:50;transition:transform .25s}
+.logo{font-size:22px;font-weight:700;color:var(--accent);margin-bottom:28px;display:flex;align-items:center;gap:10px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;cursor:pointer;color:var(--muted);font-size:14px;transition:all .2s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--surface-2);color:var(--text)}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-item i{width:18px;text-align:center}
+
+/* Main */
+.main{margin-left:240px;padding:28px;min-height:100vh}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px}
+.header h1{font-size:26px;font-weight:700}
+.header p{color:var(--muted);font-size:14px;margin-top:4px}
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.icon-btn,.btn{background:var(--surface);color:var(--text);border:1px solid var(--border);padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:all .2s;font-family:inherit}
+.icon-btn:hover,.btn:hover{background:var(--surface-2);border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{opacity:.9}
+.btn.danger{background:transparent;color:var(--danger);border-color:var(--border)}
+select,input{background:var(--surface);color:var(--text);border:1px solid var(--border);padding:9px 12px;border-radius:10px;font-size:13px;font-family:inherit;outline:none}
+select:focus,input:focus{border-color:var(--accent)}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:24px}
+.stat-box{background:var(--surface);border-radius:14px;padding:22px;border:1px solid var(--border);position:relative;transition:transform .15s}
+.stat-box:hover{transform:translateY(-2px)}
+.stat-box .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.stat-box .icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff}
+.icon.revenue{background:linear-gradient(135deg,#e94560,#ff6b81)}
+.icon.users{background:linear-gradient(135deg,#4361ee,#4895ef)}
+.icon.orders{background:linear-gradient(135deg,#f59e0b,#fbbf24)}
+.icon.rating{background:linear-gradient(135deg,#10b981,#34d399)}
+.edit-stat{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:4px}
+.edit-stat:hover{color:var(--accent)}
+.stat-box .value{font-size:28px;font-weight:700}
+.stat-box .label{font-size:13px;color:var(--muted);margin-top:2px}
+.stat-box .change{font-size:12px;margin-top:8px;display:flex;align-items:center;gap:4px}
+.up{color:var(--success)}.down{color:var(--danger)}
+
+/* Charts */
+.charts-row{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:24px}
+.chart-box{background:var(--surface);border-radius:14px;padding:22px;border:1px solid var(--border)}
+.chart-box .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:10px;flex-wrap:wrap}
+.chart-box h3{font-size:16px;font-weight:600}
+canvas{width:100%!important;height:260px!important}
+
+/* Table */
+.recent-table{background:var(--surface);border-radius:14px;padding:22px;border:1px solid var(--border)}
+.table-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.table-head h3{font-size:16px;font-weight:600}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{text-align:left;padding:12px;font-size:13px}
+th{color:var(--muted);font-weight:500;border-bottom:1px solid var(--border)}
+td{border-top:1px solid var(--border)}
+tbody tr:hover{background:var(--surface-2)}
+.status{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;display:inline-block}
+.status.completed{background:rgba(16,185,129,.15);color:var(--success)}
+.status.pending{background:rgba(245,158,11,.15);color:var(--warn)}
+.status.cancelled{background:rgba(239,68,68,.15);color:var(--danger)}
+.row-actions{display:flex;gap:6px}
+.row-actions button{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px 6px;border-radius:6px}
+.row-actions button:hover{background:var(--surface-2);color:var(--accent)}
+.empty{text-align:center;padding:30px;color:var(--muted);font-size:14px}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-bg.active{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:18px;margin-bottom:18px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.form-group input,.form-group select{width:100%}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:12px 18px;border-radius:10px;font-size:13px;z-index:200;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* Mobile */
+.menu-toggle{display:none;background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:10px;cursor:pointer;align-items:center;justify-content:center}
+@media(max-width:1024px){
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  .charts-row{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0;padding:18px}
+  .menu-toggle{display:inline-flex}
+  .header h1{font-size:22px}
+  .stats-row{grid-template-columns:1fr;gap:12px}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="logo">📊 DashPro</div>
+  <button class="nav-item active"><i class="fas fa-th-large"></i><span>Dashboard</span></button>
+  <button class="nav-item"><i class="fas fa-chart-line"></i><span>Analytics</span></button>
+  <button class="nav-item"><i class="fas fa-users"></i><span>Customers</span></button>
+  <button class="nav-item"><i class="fas fa-shopping-bag"></i><span>Orders</span></button>
+  <button class="nav-item"><i class="fas fa-cog"></i><span>Settings</span></button>
+  <div style="margin-top:auto;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;text-align:center">v1.0 · DashPro</div>
+</aside>
+
+<main class="main">
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fas fa-bars"></i></button>
+      <div>
+        <h1>Dashboard Overview</h1>
+        <p id="welcome">Welcome back</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <select id="rangeSel" onchange="changeRange()">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="12">Last 12 months</option>
+      </select>
+      <select id="currencySel" onchange="changeCurrency()">
+        <option value="$">USD ($)</option>
+        <option value="€">EUR (€)</option>
+        <option value="£">GBP (£)</option>
+        <option value="₱">PHP (₱)</option>
+        <option value="¥">JPY (¥)</option>
+      </select>
+      <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme"><i id="themeIcon" class="fas fa-sun"></i></button>
+      <button class="icon-btn" onclick="exportCSV()"><i class="fas fa-download"></i> Export</button>
+      <button class="btn primary" onclick="openOrderModal()"><i class="fas fa-plus"></i> New Order</button>
+    </div>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="charts-row">
+    <div class="chart-box">
+      <div class="chart-head">
+        <h3>Revenue Overview</h3>
+        <select id="chartType" onchange="renderRevenue()">
+          <option value="line">Line</option>
+          <option value="bar">Bar</option>
+        </select>
+      </div>
+      <canvas id="revenueChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-head"><h3>Order Status</h3></div>
+      <canvas id="trafficChart"></canvas>
+    </div>
+  </div>
+
+  <div class="recent-table">
+    <div class="table-head">
+      <h3>Recent Orders</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="search" placeholder="Search…" oninput="renderTable()" style="min-width:160px"/>
+        <select id="statusFilter" onchange="renderTable()">
+          <option value="">All status</option>
+          <option value="completed">Completed</option>
+          <option value="pending">Pending</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Order Modal -->
+<div class="modal-bg" id="orderModal">
+  <div class="modal">
+    <h2 id="modalTitle">New Order</h2>
+    <input type="hidden" id="orderId"/>
+    <div class="form-group"><label>Customer Name</label><input id="oCustomer" placeholder="John Doe"/></div>
+    <div class="form-group"><label>Product</label><input id="oProduct" placeholder="Wireless Headphones"/></div>
+    <div class="form-group"><label>Amount</label><input id="oAmount" type="number" min="0" step="0.01" placeholder="129.00"/></div>
+    <div class="form-group"><label>Status</label>
+      <select id="oStatus">
+        <option value="completed">Completed</option>
+        <option value="pending">Pending</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Date</label><input id="oDate" type="date"/></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('orderModal')">Cancel</button>
+      <button class="btn primary" onclick="saveOrder()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal (stat editor) -->
+<div class="modal-bg" id="statModal">
+  <div class="modal">
+    <h2>Edit Metric</h2>
+    <input type="hidden" id="statKey"/>
+    <div class="form-group"><label>Label</label><input id="sLabel"/></div>
+    <div class="form-group"><label>Value</label><input id="sValue"/></div>
+    <div class="form-group"><label>Change (%)</label><input id="sChange" type="number" step="0.1" placeholder="12.5 or -2.4"/></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('statModal')">Cancel</button>
+      <button class="btn primary" onclick="saveStat()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Welcome / username Modal -->
+<div class="modal-bg" id="nameModal">
+  <div class="modal">
+    <h2>👋 Welcome to DashPro</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Set your name to personalize the dashboard.</p>
+    <div class="form-group"><label>Your name</label><input id="userName" placeholder="e.g. Justine"/></div>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="saveName()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- State ---------------- */
+const LS = {
+  user: 'dp_user', orders: 'dp_orders', stats: 'dp_stats',
+  theme: 'dp_theme', currency: 'dp_currency', range: 'dp_range'
+};
+let state = {
+  user: localStorage.getItem(LS.user) || '',
+  currency: localStorage.getItem(LS.currency) || '$',
+  range: localStorage.getItem(LS.range) || '30',
+  theme: localStorage.getItem(LS.theme) || 'dark',
+  orders: JSON.parse(localStorage.getItem(LS.orders) || 'null'),
+  stats: JSON.parse(localStorage.getItem(LS.stats) || 'null'),
+};
+
+/* Defaults */
+if(!state.orders){
+  state.orders = [
+    {id:'1024',customer:'Alice Smith',product:'Wireless Headphones',amount:129,status:'completed',date:today(-1)},
+    {id:'1023',customer:'John Doe',product:'Smart Watch',amount:259,status:'pending',date:today(-2)},
+    {id:'1022',customer:'Maria Garcia',product:'Laptop Stand',amount:45,status:'completed',date:today(-3)},
+    {id:'1021',customer:'Liam Brown',product:'Mechanical Keyboard',amount:179,status:'cancelled',date:today(-5)},
+    {id:'1020',customer:'Sophia Lee',product:'USB-C Hub',amount:59,status:'completed',date:today(-7)},
+  ];
+}
+if(!state.stats){
+  state.stats = {
+    revenue:{label:'Total Revenue', value:null, change:12.5, auto:true},
+    users:  {label:'Total Users',   value:1429, change:8.2,  auto:false},
+    orders: {label:'Total Orders',  value:null, change:-2.4, auto:true},
+    rating: {label:'Avg Rating',    value:4.8,  change:0.3,  auto:false},
+  };
+}
+
+function today(offset=0){const d=new Date();d.setDate(d.getDate()+offset);return d.toISOString().slice(0,10)}
+function save(){
+  localStorage.setItem(LS.orders,JSON.stringify(state.orders));
+  localStorage.setItem(LS.stats,JSON.stringify(state.stats));
+  localStorage.setItem(LS.currency,state.currency);
+  localStorage.setItem(LS.range,state.range);
+  localStorage.setItem(LS.theme,state.theme);
+  if(state.user) localStorage.setItem(LS.user,state.user);
+}
+function fmt(n){return state.currency + Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2})}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._t);window._t=setTimeout(()=>t.classList.remove('show'),2200)}
+
+/* ---------------- Theme ---------------- */
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',state.theme);
+  document.getElementById('themeIcon').className = state.theme==='dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+function toggleTheme(){state.theme = state.theme==='dark'?'light':'dark';save();applyTheme();renderRevenue();renderTraffic()}
+
+/* ---------------- Filters ---------------- */
+function rangeOrders(){
+  const r = state.range;
+  const cutoff = new Date();
+  if(r==='12') cutoff.setMonth(cutoff.getMonth()-12);
+  else cutoff.setDate(cutoff.getDate()-parseInt(r));
+  return state.orders.filter(o=>new Date(o.date)>=cutoff);
+}
+function changeRange(){state.range=document.getElementById('rangeSel').value;save();renderAll()}
+function changeCurrency(){state.currency=document.getElementById('currencySel').value;save();renderStats();renderTable();renderRevenue()}
+
+/* ---------------- Stats ---------------- */
+function computeAuto(){
+  const inRange = rangeOrders();
+  const completed = inRange.filter(o=>o.status==='completed');
+  if(state.stats.revenue.auto) state.stats.revenue.value = completed.reduce((s,o)=>s+Number(o.amount||0),0);
+  if(state.stats.orders.auto)  state.stats.orders.value  = inRange.length;
+}
+function renderStats(){
+  computeAuto();
+  const icons={revenue:'fa-dollar-sign',users:'fa-users',orders:'fa-shopping-cart',rating:'fa-star'};
+  const fmtVal=(k,v)=>{
+    if(v==null) return '—';
+    if(k==='revenue') return fmt(v);
+    if(k==='rating') return Number(v).toFixed(1);
+    return Number(v).toLocaleString();
+  };
+  document.getElementById('statsRow').innerHTML = Object.entries(state.stats).map(([k,s])=>{
+    const ch = Number(s.change||0);
+    const dir = ch>=0?'up':'down';
+    const arrow = ch>=0?'fa-arrow-up':'fa-arrow-down';
+    return `<div class="stat-box">
+      <div class="top">
+        <div class="icon ${k}"><i class="fas ${icons[k]}"></i></div>
+        <button class="edit-stat" onclick="editStat('${k}')" title="Edit"><i class="fas fa-pen"></i></button>
+      </div>
+      <div class="value">${fmtVal(k,s.value)}</div>
+      <div class="label">${s.label}${s.auto?' · auto':''}</div>
+      <div class="change ${dir}"><i class="fas ${arrow}"></i> ${ch>=0?'+':''}${ch}%</div>
+    </div>`;
+  }).join('');
+}
+function editStat(k){
+  const s=state.stats[k];
+  document.getElementById('statKey').value=k;
+  document.getElementById('sLabel').value=s.label;
+  document.getElementById('sValue').value=s.value??'';
+  document.getElementById('sChange').value=s.change;
+  document.getElementById('statModal').classList.add('active');
+}
+function saveStat(){
+  const k=document.getElementById('statKey').value;
+  const v=document.getElementById('sValue').value;
+  state.stats[k].label=document.getElementById('sLabel').value||state.stats[k].label;
+  state.stats[k].change=parseFloat(document.getElementById('sChange').value)||0;
+  if(v===''){state.stats[k].auto=true;state.stats[k].value=null}
+  else{state.stats[k].auto=false;state.stats[k].value=parseFloat(v)}
+  save();closeModal('statModal');renderStats();toast('Metric updated')
+}
+
+/* ---------------- Table ---------------- */
+function renderTable(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const sf=document.getElementById('statusFilter').value;
+  const rows=state.orders
+    .filter(o=>!sf||o.status===sf)
+    .filter(o=>!q||(o.customer+o.product+o.id).toLowerCase().includes(q))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const tb=document.getElementById('tbody');
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="7" class="empty">No orders match your filters.</td></tr>`;return}
+  tb.innerHTML=rows.map(o=>`<tr>
+    <td>#${o.id}</td><td>${esc(o.customer)}</td><td>${esc(o.product)}</td>
+    <td>${fmt(o.amount)}</td>
+    <td><span class="status ${o.status}">${cap(o.status)}</span></td>
+    <td>${o.date}</td>
+    <td><div class="row-actions">
+      <button onclick="editOrder('${o.id}')" title="Edit"><i class="fas fa-pen"></i></button>
+      <button onclick="deleteOrder('${o.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+    </div></td>
+  </tr>`).join('');
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+
+/* ---------------- Order CRUD ---------------- */
+function openOrderModal(){
+  document.getElementById('modalTitle').textContent='New Order';
+  document.getElementById('orderId').value='';
+  document.getElementById('oCustomer').value='';
+  document.getElementById('oProduct').value='';
+  document.getElementById('oAmount').value='';
+  document.getElementById('oStatus').value='completed';
+  document.getElementById('oDate').value=today();
+  document.getElementById('orderModal').classList.add('active');
+}
+function editOrder(id){
+  const o=state.orders.find(x=>x.id===id);if(!o)return;
+  document.getElementById('modalTitle').textContent='Edit Order';
+  document.getElementById('orderId').value=o.id;
+  document.getElementById('oCustomer').value=o.customer;
+  document.getElementById('oProduct').value=o.product;
+  document.getElementById('oAmount').value=o.amount;
+  document.getElementById('oStatus').value=o.status;
+  document.getElementById('oDate').value=o.date;
+  document.getElementById('orderModal').classList.add('active');
+}
+function saveOrder(){
+  const id=document.getElementById('orderId').value;
+  const data={
+    customer:document.getElementById('oCustomer').value.trim(),
+    product:document.getElementById('oProduct').value.trim(),
+    amount:parseFloat(document.getElementById('oAmount').value)||0,
+    status:document.getElementById('oStatus').value,
+    date:document.getElementById('oDate').value||today()
+  };
+  if(!data.customer||!data.product){toast('Customer and product required');return}
+  if(id){Object.assign(state.orders.find(x=>x.id===id),data);toast('Order updated')}
+  else{state.orders.unshift({id:String(Date.now()).slice(-4),...data});toast('Order added')}
+  save();closeModal('orderModal');renderAll();
+}
+function deleteOrder(id){
+  if(!confirm('Delete this order?'))return;
+  state.orders=state.orders.filter(o=>o.id!==id);
+  save();renderAll();toast('Order deleted')
+}
+function closeModal(id){document.getElementById(id).classList.remove('active')}
+
+/* ---------------- Charts ---------------- */
+let revenueChart, trafficChart;
+function themeColors(){
+  const styles=getComputedStyle(document.documentElement);
+  return{
+    text:styles.getPropertyValue('--muted').trim(),
+    grid:styles.getPropertyValue('--border').trim(),
+    surface:styles.getPropertyValue('--surface').trim()
+  }
+}
+function buildSeries(){
+  const r=state.range;
+  const buckets={};const labels=[];
+  if(r==='12'){
+    for(let i=11;i>=0;i--){
+      const d=new Date();d.setMonth(d.getMonth()-i);
+      const key=d.toISOString().slice(0,7);
+      labels.push(d.toLocaleString(undefined,{month:'short'}));
+      buckets[key]=0;
+    }
+    state.orders.filter(o=>o.status==='completed').forEach(o=>{
+      const k=o.date.slice(0,7);if(k in buckets) buckets[k]+=Number(o.amount||0);
+    });
+  } else {
+    const days=parseInt(r);
+    for(let i=days-1;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      const key=d.toISOString().slice(0,10);
+      labels.push(d.toLocaleString(undefined,{month:'short',day:'numeric'}));
+      buckets[key]=0;
+    }
+    state.orders.filter(o=>o.status==='completed').forEach(o=>{
+      if(o.date in buckets) buckets[o.date]+=Number(o.amount||0);
+    });
+  }
+  return{labels,data:Object.values(buckets)};
+}
+function renderRevenue(){
+  const {labels,data}=buildSeries();
+  const c=themeColors();
+  const type=document.getElementById('chartType').value;
+  if(revenueChart) revenueChart.destroy();
+  revenueChart=new Chart(document.getElementById('revenueChart'),{
+    type,
+    data:{labels,datasets:[{
+      label:'Revenue',data,
+      borderColor:'#e94560',
+      backgroundColor:type==='bar'?'#e94560':'rgba(233,69,96,.18)',
+      fill:type==='line',tension:.4,pointRadius:3,pointBackgroundColor:'#e94560',borderWidth:2,borderRadius:6
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:c.text}},tooltip:{callbacks:{label:ctx=>fmt(ctx.parsed.y)}}},
+      scales:{x:{ticks:{color:c.text},grid:{color:c.grid}},y:{ticks:{color:c.text,callback:v=>fmt(v)},grid:{color:c.grid}}}
+    }
+  });
+}
+function renderTraffic(){
+  const c=themeColors();
+  const counts={completed:0,pending:0,cancelled:0};
+  state.orders.forEach(o=>counts[o.status]++);
+  if(trafficChart) trafficChart.destroy();
+  trafficChart=new Chart(document.getElementById('trafficChart'),{
+    type:'doughnut',
+    data:{labels:['Completed','Pending','Cancelled'],
+      datasets:[{data:[counts.completed,counts.pending,counts.cancelled],
+        backgroundColor:['#10b981','#f59e0b','#ef4444'],borderColor:c.surface,borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{position:'bottom',labels:{color:c.text,padding:14}}}}
+  });
+}
+
+/* ---------------- Export ---------------- */
+function exportCSV(){
+  const rows=[['Order ID','Customer','Product','Amount','Status','Date'],
+    ...state.orders.map(o=>[o.id,o.customer,o.product,o.amount,o.status,o.date])];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`orders-${today()}.csv`;a.click();
+  toast('Exported CSV');
+}
+
+/* ---------------- Username ---------------- */
+function saveName(){
+  const v=document.getElementById('userName').value.trim();
+  if(!v){toast('Please enter a name');return}
+  state.user=v;save();
+  document.getElementById('welcome').textContent=`Welcome back, ${v}`;
+  closeModal('nameModal');
+}
+
+/* ---------------- Init ---------------- */
+function renderAll(){renderStats();renderTable();renderRevenue();renderTraffic()}
+function init(){
+  applyTheme();
+  document.getElementById('rangeSel').value=state.range;
+  document.getElementById('currencySel').value=state.currency;
+  if(state.user) document.getElementById('welcome').textContent=`Welcome back, ${state.user}`;
+  else document.getElementById('nameModal').classList.add('active');
+  renderAll();
+  document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+    n.classList.add('active');
+  }));
+  document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('active')}));
+}
+init();
+</script>
+</body>
+</html>
